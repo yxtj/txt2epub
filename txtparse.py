@@ -1,5 +1,6 @@
 #-*- coding: UTF-8 -*-
 import re
+import sys
 import util
 
 
@@ -30,6 +31,9 @@ def check_number_list(numbers):
 #% -------- seperate sections and chapters --------
 
 def __separate_basic(s, pattern, title):
+    '''
+    Return [(id, title, content)]
+    '''
     matches = [m for m in re.finditer(pattern, s, re.MULTILINE)]
     if len(matches) == 0:
         return []
@@ -41,13 +45,19 @@ def __separate_basic(s, pattern, title):
             fail.append(match[0])
         numbers.append(n)
     if len(fail) > 0:
+        print("%s numbers: %s" % (title, numbers), file=sys.stderr)
         raise Exception("%s number is not valid number. Wrong: %s" % (title, fail))
     wrong = check_number_increasing(numbers)
-    if len(wrong) > 0:
-        raise Exception("%s number is not increasing. Wrong: %s" % (title, wrong))
     missing = check_number_list(numbers)
-    if len(missing) > 0:
-        raise Exception("%s number is not continuous. Missing: %s" % (title, missing))
+    if len(wrong) > 0 or len(missing) > 0:
+        print("%s numbers: %s" % (title, numbers), file=sys.stderr)
+        if len(wrong) > 0:
+            print("Warning: %s number is not increasing. Wrong: %s" % (title, wrong), file=sys.stderr)
+        if len(missing) > 0:
+            print("Warning: %s number is not continuous. Missing: %s" % (title, missing), file=sys.stderr)
+        goon = input("Continue (Y/N)? ")
+        if goon.lower() != 'y':
+            sys.exit(1)
     content = util.trim_text(s[0: matches[0].start()])
     res = [(-1, '', content)]
     for i in range(len(matches)):
@@ -59,7 +69,7 @@ def __separate_basic(s, pattern, title):
 
 
 def make_pattern(title, length=20):
-    return r"^第([零一二三四五六七八九十白千\d]*?)%s(?:[ \t　]+([\S 　]{1,%d}))?$" % (title, length)
+    return r"^第([零一二三四五六七八九十百千\d]*?)%s(?:[ \t　]+([\S 　]{1,%d}))?$" % (title, length)
 
 
 def separate_sections(s, pattern=None):
@@ -105,9 +115,14 @@ def process_book(text, sec_name, sec_length, chp_name, chp_length):
     sections = separate_sections(text, sec_pattern)
     preface = sections[0][2]
     data = []
+    i=1
     for sec in sections[1:]:
+        print("section %d: " % i, sec[1])
         chapters = separate_chapters(sec[2], chp_pattern)
-        content = chapters[0][2]
+        if len(chapters) == 0:
+            content = sec[2]
+        else:
+            content = chapters[0][2]
         s = (sec[0], sec[1], content, chapters[1:])
         data.append(s)
     return preface, data

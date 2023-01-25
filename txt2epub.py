@@ -6,12 +6,37 @@ from ebooklib import epub
 import txtparse
 import htmlgen
 
+# todo: --cover figure
+# todo: add mobi output
+# todo: encoding detection
+
 def dump_epub_section_chapter(book, sections):
     pass
 
 def dump_epub_chapter(book, chapters):
     pass
 
+
+def get_file_name(filenames, sid, cid, title):
+    id = (sid, cid, title)
+    if cid is None:
+        # section name
+        fn = 'section_%d.xhtml' % sid
+    else:
+        # chapter name
+        fn = 'chapter_%d.%d.xhtml' % (sid, cid)
+    # for duplicated id: add a suffix
+    i = 1
+    while fn in filenames:
+        i += 1
+        if cid is None:
+            fn = 'section_%d-%d.xhtml' % (sid, i)
+        else:
+            fn = 'chapter_%d.%d-%d.xhtml' % (sid, cid, i)
+    filenames.append(fn)
+    return fn
+
+STYLE_FILE_NAME="style/book.css"
 
 def main(args):
     # process the input txt file
@@ -49,27 +74,33 @@ def main(args):
     if len(pf_data) > 0:
         preface = epub.EpubHtml(title='前言', file_name='preface.xhtml', lang=args.language)
         preface.content = htmlgen.preface_to_html(pf_data, args.title, args.author)
+        preface.add_link(href=STYLE_FILE_NAME, rel='stylesheet', type='text/css')
         book.add_item(preface)
     else:
         preface = None
 
     sections = []
 
-    # create the sections
+    file_names = []
     n = 0
-    for section in data:
+    # create the sections
+    for sid, section in enumerate(data):
         s_num, meta, content, chapters = section
         title = htmlgen.make_section_head(meta[0], meta[1])
-        section = epub.EpubHtml(title=title, file_name='section_%d.xhtml' % s_num, lang=args.language)
+        fn = get_file_name(file_names, s_num, None, title)
+        section = epub.EpubHtml(title=title, file_name=fn, lang=args.language)
         section.set_content(htmlgen.section_to_html(meta[0], meta[1], content))
+        section.add_link(href=STYLE_FILE_NAME, rel='stylesheet', type='text/css')
         book.add_item(section)
         # create the chapters
         cs = []
-        for chapter in chapters:
+        for cid, chapter in enumerate(chapters):
             c_num, meta, content = chapter
             title = htmlgen.make_chapter_head(meta[0], meta[1])
-            chapter = epub.EpubHtml(title=title, file_name='chapter_%d.%d.xhtml' % (s_num, c_num), lang=args.language)
+            fn = get_file_name(file_names, s_num, c_num, title)
+            chapter = epub.EpubHtml(title=title, file_name=fn, lang=args.language)
             chapter.set_content(htmlgen.chapter_to_html(meta[0], meta[1], content))
+            chapter.add_link(href=STYLE_FILE_NAME, rel='stylesheet', type='text/css')
             book.add_item(chapter)
             cs.append(chapter)
         n += len(cs)
@@ -101,16 +132,14 @@ def main(args):
     print('Generating style sheet.')
     style = '''
 body { font-family: 宋体; }
-p:not(.title):not(.author) { text-indent:2em; }
-h1 { text-align: center; font-size: 1.6em;}
-h2 { text-align: center; font-size: 1.3em;}
-.h-center { text-align: center; }
-.v-center { vertical-align: middle; }
-div#book-title { text-align: center; vertical-align: middle; }
-div#book-title p.title { font-size: 2.0em; }
-div#book-title p.author { font-size: 1.5em; }
+p {text-indent:2em; margin:0.5em 0em;}
+h1 {text-align: center; font-size: 1.6em;}
+h2 {text-align: center; font-size: 1.3em; margin: 1em 0;}
+div#book-title {text-align: center; vertical-align: middle;}
+div#book-title p.title {font-size: 2.0em; text-indent:0em; margin: 1em 0;}
+div#book-title p.author {font-size: 1.5em; text-indent:0em; margin: 1em 0;}
 '''
-    nav_css = epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=style)
+    nav_css = epub.EpubItem(uid="style_book", file_name=STYLE_FILE_NAME, media_type="text/css", content=style)
     book.add_item(nav_css)
     
     # write the EPUB file

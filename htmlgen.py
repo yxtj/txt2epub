@@ -21,7 +21,7 @@ def preface_to_html(content, title, author):
     res += '<p class="author">%s</p>\n' % author
     res += '</div>\n'
     paragraphs = [c for c in content.split('\n') if c]
-    res += '\n'.join(['<p>%s</p>' % p for p in paragraphs])
+    res += '\n'.join(['<p>%s</p>' % p.strip() for p in paragraphs])
     return res
 
 # section
@@ -33,9 +33,9 @@ def section_to_html(num, title, content):
     '''
     Trun section content into html.
     '''
-    paragraphs = [c for c in content.split('\n') if c]
+    paragraphs = [c for c in content.split('\n')]
     head = '<h1>' + make_section_head(num, title) + '</h1>'
-    res = head + '\n' + '\n'.join(['<p>%s</p>' % p for p in paragraphs])
+    res = head + '\n' + '\n'.join(['<p>%s</p>' % p.strip() for p in paragraphs])
     return res
 
 # chapter
@@ -49,5 +49,5 @@ def chapter_to_html(num, title, content):
     '''
     paragraphs = [c for c in content.split('\n')]
     head = '<h2>' + make_chapter_head(num, title) + '</h2>'
-    res = head + '\n' + '\n'.join(['<p>%s</p>' % p for p in paragraphs])
+    res = head + '\n' + '\n'.join(['<p>%s</p>' % p.strip() for p in paragraphs])
     return res
